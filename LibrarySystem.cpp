@@ -3,9 +3,7 @@
 #include <vector>
 using namespace std;
 
-/* =======================
-   Book Structure
-   ======================= */
+/* Book Structure */
 struct Book
 {
     int id;
@@ -17,13 +15,18 @@ struct Book
         : id(i), title(t), classification(c), isBorrowed(false) {}
 };
 
+//queueNode 链表队列
+struct QueueNode
+{
+    int bookID;
+    QueueNode* next;
+
+    QueueNode(int id) : bookID(id), next(nullptr) {}
+};
 
 
 
-
-/* =======================
-   Linked List for History
-   ======================= */
+/*    Linked List for History   */
 struct HistoryNode
 {
     string action;
