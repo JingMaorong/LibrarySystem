@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <iomanip>
 using namespace std;
 
 /* Book Structure */
@@ -14,6 +15,110 @@ struct Book
     Book(int i, string t, string c)
         : id(i), title(t), classification(c), isBorrowed(false) {}
 };
+
+/* 新加了Tree Implementation所以我把Vector去掉了, 有影响的也调了*/
+/* Book Tree Node */
+struct TreeNode
+{
+    Book data;
+    TreeNode* left;
+    TreeNode* right;
+
+    TreeNode(Book b)
+            : data(b), left(nullptr), right(nullptr) {}    
+};
+
+/* Book Tree Class */
+class BookTree 
+{   
+    private:
+        TreeNode* root;
+
+    public:
+        BookTree(){ root = nullptr; }
+        ~BookTree(){ Destroy(root); }
+        void Destroy(TreeNode* tree){
+            if(tree!=nullptr){
+                Destroy(tree->left);
+                Destroy(tree->right);
+                delete(tree);
+            }
+        }
+
+        bool isEmpty() const{
+            if(root == NULL)
+                return true;
+            else    
+                return false;
+        }
+
+        int NumberOfNodes() const;
+
+        TreeNode* SearchNode(TreeNode* tree, int id)
+        {
+            if (tree == nullptr || tree->data.id == id)
+                return tree;
+
+            if (id < tree->data.id)
+                return SearchNode(tree->left, id);
+            else
+                return SearchNode(tree->right, id);
+        }
+
+        Book* SearchByID(int id)
+        {
+            TreeNode* result = SearchNode(root, id);
+            if (result != nullptr)
+                return &result->data;
+            return nullptr;
+        }
+
+
+
+        void InsertBook(Book b){ Insert(root, b); }
+        void Insert(TreeNode*& tree, Book b)
+        {
+            if (tree == NULL){
+                tree = new TreeNode(b);
+                tree->right = NULL;
+                tree->left = NULL;
+                tree->data = b;
+            } else if (b.id < tree->data.id)
+                Insert(tree->left, b);
+            else
+                Insert (tree->right, b);
+        }
+
+        void DeleteBook(Book b);
+
+        void DisplayBookList() const{
+            cout << "\n--- Book List ---\n";
+            cout << "-------------------------------------------------------------\n"
+                << left<<setw(5)<<"ID"<<setw(24)<<"Title"<<setw(20)<<"Class"<<setw(10)<<"Status"<<endl
+                << "-------------------------------------------------------------\n";
+            
+            Print(root);
+        }
+
+        void Print(TreeNode* tree) const{
+            if(tree == NULL)
+                return;
+
+            Print(tree->left);
+            cout <<left
+                 << setw(5) << tree->data.id
+                 << setw(24) << tree->data.title
+                 << setw(20) << tree->data.classification
+                 << setw(10) << (tree->data.isBorrowed ? "Borrowed" : "Available")
+                 << endl;
+            
+            Print(tree->right);
+            
+        }
+
+};
+
+
 
 //queueNode 链表队列
 struct QueueNode
@@ -66,13 +171,17 @@ public:
 
     void disPlay() const
     {
-        cout << "\n--- Borrow History ---\n";
+        cout << "-------- Borrow History --------\n";
+        cout << "--------------------------------\n"
+             << left << setw(8) << "Action"<< setw(5)<<"ID"<<setw(24)<<"Title"<<endl
+             << "--------------------------------\n";
         HistoryNode* cur = head;
         while (cur)
         {
-             cout << cur->action
-             << " | Book ID: " << cur->bookID
-             << " | Title: " << cur->bookTitle
+             cout <<left
+             << setw(8) << cur->action
+             << setw(5) << cur->bookID
+             << setw(24) << cur->bookTitle
              << endl;
             cur = cur->next;
         }
@@ -82,15 +191,14 @@ public:
 /* =======================
    Test Data
    ======================= */
-void TestData(vector<Book>& books)
+void TestData(BookTree& books)
 {
-    books = {
-        Book(101, "Data Structures", "Computer Science"),
-        Book(102, "Operating Systems", "Computer Science"),
-        Book(201, "Discrete Mathematics", "Mathematics"),
-        Book(301, "Linear Algebra", "Mathematics"),
-        Book(401, "Database Systems", "Computer Science")
-    };
+    books.InsertBook(Book(101, "Data Structures", "Computer Science"));
+    books.InsertBook(Book(102, "Operating Systems", "Computer Science"));
+    books.InsertBook(Book(201, "Discrete Mathematics", "Mathematics"));
+    books.InsertBook(Book(301, "Linear Algebra", "Mathematics"));
+    books.InsertBook(Book(401, "Database Systems", "Computer Science"));
+
 }
 
 void bookHistory(HistoryList& history)
@@ -103,7 +211,7 @@ void bookHistory(HistoryList& history)
 /* =======================
    Book Management UI
    ======================= */
-void addBookUI(vector<Book>& books)
+void addBookUI(BookTree& books)
 {
     while (true)
     {
@@ -119,29 +227,20 @@ void addBookUI(vector<Book>& books)
         cout << "Classification: ";
         getline(cin, cls);
 
-        books.push_back(Book(id, title, cls));
+        books.InsertBook(Book(id, title, cls));
         cout << "Book added.\n";
     }
 }
 
-void displayBooks(const vector<Book>& books)
+void displayBooks(BookTree& books)
 {
-    cout << "\n--- Book List ---\n";
-    for (const auto& b : books)
-    {
-        cout << "ID: " << b.id
-             << " | Title: " << b.title
-             << " | Class: " << b.classification
-             << " | Status: "
-             << (b.isBorrowed ? "Borrowed" : "Available")
-             << endl;
-    }
+    books.DisplayBookList();
 }
 
 /* =======================
    Borrow / Return UI
    ======================= */
-void borrowBookUI(vector<Book>& books, HistoryList& history)
+void borrowBookUI(BookTree& books, HistoryList& history)
 {
     while (true)
     {
@@ -150,30 +249,27 @@ void borrowBookUI(vector<Book>& books, HistoryList& history)
         cin >> id;
         if (id == 0) break;
 
-        bool found = false;
-        for (auto& b : books)
+        Book* b = books.SearchByID(id);
+
+        if (b == nullptr)
         {
-            if (b.id == id)
-            {
-                found = true;
-                if (b.isBorrowed)
-                {
-                    cout << "Book already borrowed.\n";
-                }
-                else
-                {
-                    b.isBorrowed = true;
-                    history.addHistory("BORROW", id,b.title);
-                    cout << "Borrow success.\n";
-                }
-                break;
-            }
+            cout << "Book not found.\n";
         }
-        if (!found) cout << "Book not found.\n";
+        else if (b->isBorrowed)
+        {
+            cout << "Book already borrowed.\n";
+        }
+        else
+        {
+            b->isBorrowed = true;
+            history.addHistory("BORROW", id, b->title);
+            cout << "Borrow success.\n";
+        }
     }
 }
 
-void returnBookUI(vector<Book>& books, HistoryList& history)
+
+void returnBookUI(BookTree& books, HistoryList& history)
 {
     while (true)
     {
@@ -182,34 +278,31 @@ void returnBookUI(vector<Book>& books, HistoryList& history)
         cin >> id;
         if (id == 0) break;
 
-        bool found = false;
-        for (auto& b : books)
+        Book* b = books.SearchByID(id);
+
+        if (b == nullptr)
         {
-            if (b.id == id)
-            {
-                found = true;
-                if (!b.isBorrowed)
-                {
-                    cout << "Book was not borrowed.\n";
-                }
-                else
-                {
-                    b.isBorrowed = false;
-                    history.addHistory("RETURN", id,b.title);
-                    cout << "Return success.\n";
-                }
-                break;
-            }
+            cout << "Book not found.\n";
         }
-        if (!found) cout << "Book not found.\n";
+        else if (!b->isBorrowed)
+        {
+            cout << "Book was not borrowed.\n";
+        }
+        else
+        {
+            b->isBorrowed = false;
+            history.addHistory("RETURN", id, b->title);
+            cout << "Return success.\n";
+        }
     }
+
 }
 
 
 
-
+/*因为从vector换成tree, 所以改了一点点 大多在parameter*/
 /* ========UI=========== 不要动*/  
-void bookMenu(vector<Book>& books)
+void bookMenu(BookTree& books)
 {
     int choice;
     while (true)
@@ -229,7 +322,7 @@ void bookMenu(vector<Book>& books)
     }
 }
 
-void borrowMenu(vector<Book>& books, HistoryList& history)
+void borrowMenu(BookTree& books, HistoryList& history)
 {
     int choice;
     while (true)
@@ -254,7 +347,7 @@ void borrowMenu(vector<Book>& books, HistoryList& history)
 
 int main()
 {
-    vector<Book> books;
+    BookTree books;
     HistoryList history;
 
     TestData(books);
