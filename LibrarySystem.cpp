@@ -4,15 +4,19 @@
 #include <iomanip>
 using namespace std;
 
-//queueNode 链表队列
+/* =======================
+   Queue Implementation
+   ======================= */
+
+//Queue Node Structure: store reservation data(username)
 struct ReservationNode
 {
-    string userName;
+    string userName;            //store reservation record with username
     ReservationNode* next;
-
     ReservationNode(string name) : userName(name), next(nullptr) {}
 };
 
+//Queue Implementation: Reservation queue for each book
 class ReservationQueue
 {
     private:
@@ -21,83 +25,108 @@ class ReservationQueue
 
     public:
         ReservationQueue() : front(nullptr), rear(nullptr) {}
+        ~ReservationQueue() {
+            ReservationNode* cur = front;
+            while(cur != NULL){
+                ReservationNode* temp = cur;
+                cur = cur->next;
+                delete temp;
+            }
+            front = rear = NULL;
+        }
 
-        bool isEmpty(){
+        bool isEmpty(){    //if queue is empty, no next user assigned
             return front == NULL;
         }
 
-        void enqueue(string name) {
-        ReservationNode* newNode = new ReservationNode(name);
-        if (rear == nullptr) {
-            front = rear = newNode;
+        void enqueue(string name) {     //add new reservation
+            ReservationNode* newNode = new ReservationNode(name);
+            if (rear == nullptr) {
+                front = rear = newNode;
+            }
+            else {
+                rear->next = newNode;
+                rear = newNode;
+            }
         }
-        else {
-            rear->next = newNode;
-            rear = newNode;
-        }
-    }
 
-    string dequeue() {
-        if (isEmpty()) return "";
-        ReservationNode* temp = front;
-        string name = temp->userName;
-        front = front->next;
-        if (front == nullptr) rear = nullptr;
-        delete temp;
-        return name;
-    }
-
-    void displayQueue() {
-        ReservationNode* currNode = front;
-        cout << "Reservation List: ";
-        while (currNode != nullptr) {
-            cout << currNode->userName << endl;
-            currNode = currNode->next;
+        string dequeue() {     //assign book to next queueing user
+            if (isEmpty()) return "";
+            ReservationNode* temp = front;
+            string name = temp->userName;
+            front = front->next;
+            if (front == nullptr) rear = nullptr;
+            delete temp;
+            return name;
         }
-        cout << endl;
-    }
+
 };
 
-/* Use Linked List Implements Stack */
+
+/* Book Structure */
+struct Book
+{
+    int id;
+    string title;
+    string classification;
+    string currentUser;     //record who is holding the book
+    bool isBorrowed;
+    ReservationQueue rQueue;    //reservation queue for this book
+
+    Book(int i, string t, string c)
+        : id(i), title(t), classification(c), currentUser(""), isBorrowed(false) {}
+};
+
+
+
+/* =======================
+   Stack Implementation
+   ======================= */
+
+//Action structure: store ADD, DELETE, BORROW, RETURN actions
+struct Action {
+    string type;
+    Book book_copy;     //copy of whole book structure to support undo
+
+    Action() : type(""), book_copy(0,"","") {}
+};
+
+
+//Stack implementation using Linked List
+//Track system actions and support undo operation
+//StackNode: store most recent action
 struct StackNode {
-    string data;
+    Action data;
     StackNode* next;
-    StackNode(string value) : data(value), next(nullptr) {}
+    StackNode(Action value) : data(value), next(nullptr) {}
 };
 
-class LinkedListStack {
+//Action Stack: stack of most recent action to support undo
+class ActionStack {
 private:
     StackNode* top_node;
 
 public:
-    LinkedListStack() : top_node(nullptr) {}
-
-    ~LinkedListStack() {
+    ActionStack() : top_node(nullptr) {}
+    ~ActionStack() {
         clear();
     }
 
-    void push(string value) {
+    void push(Action value) {
         StackNode* newNode = new StackNode(value);
         newNode->next = top_node;
         top_node = newNode;
     }
 
-    string pop() {
+    Action pop() {
         if (isEmpty()) {
-            return ""; // 或者抛出异常
+            return Action(); // 或者抛出异常
         }
         StackNode* oldTop = top_node;
-        string value = oldTop->data;
+        Action value = oldTop->data;
         top_node = top_node->next;
         delete oldTop;
         return value;
-    }
-
-    string peek() const {
-        if (isEmpty()) {
-            return "";
-        }
-        return top_node->data;
     }
 
     bool isEmpty() const {
@@ -109,32 +138,115 @@ public:
             pop();
         }
     }
+};
 
-    vector<string> getElementsAsVector() const {
-        vector<string> elements;
-        StackNode* current = top_node;
-        while (current != nullptr) {
-            elements.push_back(current->data);
-            current = current->next;
+
+
+
+/* ==========================
+   Linked List Implementatian
+   ========================== */
+
+//History Node: stores action history
+struct HistoryNode
+{
+    string action;
+    string userName;
+    int bookID;
+    string bookTitle;
+    HistoryNode* next;
+
+    HistoryNode(string a, string u, int id,string title)
+        : action(a), userName(u), bookID(id), bookTitle(title),next(nullptr) {}
+};
+
+//History Linked List
+class HistoryList
+{
+private:
+    HistoryNode* head;
+public:
+    HistoryList() : head(nullptr) {}
+
+    void addHistory(string action, string userName, int bookID, string bookTitle)
+    {
+        HistoryNode* node = new HistoryNode(action, userName, bookID,bookTitle);
+        if (head == nullptr)
+        {
+            head = node;
+            return;
         }
-        return elements; // 返回的是从栈顶到栈底的顺序
+        HistoryNode* cur = head;
+        while (cur->next) cur = cur->next;
+        cur->next = node;
+    }
+
+    void displayHistory() const
+    {
+        cout << "------------ Borrow History ------------\n";
+        cout << "----------------------------------------\n"
+             << left << setw(8) << "Action" << setw(10) << "Name" << setw(5) << "ID" << setw(24) << "Title" << endl
+             << "----------------------------------------\n";
+        HistoryNode* cur = head;
+        while (cur)
+        {
+             cout <<left
+             << setw(8) << cur->action
+             << setw(10) << cur->userName
+             << setw(5) << cur->bookID
+             << setw(24) << cur->bookTitle
+             << endl;
+            cur = cur->next;
+        }
+        if(head == nullptr) cout << "No history records found." << endl;
+    }
+
+    void displayBookHistory(int bookID) const{
+        HistoryNode* cur = head;
+        bool found = false;
+
+        while (cur)
+        {
+            if (cur->bookID == bookID)
+            {
+                cout << left
+                    << setw(8) << cur->action
+                    << setw(10) << cur->userName
+                    << setw(5) << cur->bookID
+                    << setw(24) << cur->bookTitle
+                    << endl;
+                found = true;
+            }
+            cur = cur->next;
+        }
+
+        if (!found)
+            cout << "No history found for this book.\n";
+    }
+
+    //remove the last history entry when user choose undo operation
+    void removeLastHistory() {      
+        if (head == NULL) return;
+        if (head->next == NULL){
+            delete head;
+            head = NULL;
+            return;
+        }
+
+        HistoryNode* cur = head;
+        while (cur->next->next !=NULL)
+            cur = cur->next;
+
+        delete cur->next;
+        cur->next = NULL;
     }
 };
 
-/* Book Structure */
-struct Book
-{
-    int id;
-    string title;
-    string classification;
-    string currentUser;
-    bool isBorrowed;
-    ReservationQueue rQueue;
-    LinkedListStack statusStack; // 使用链表实现的栈
 
-    Book(int i, string t, string c)
-        : id(i), title(t), classification(c), currentUser(""), isBorrowed(false) {}
-};
+
+/* ====================
+   Tree Implementation
+   ==================== */
 
 /* Book Tree Node */
 struct TreeNode
@@ -172,7 +284,13 @@ private:
     void Print(TreeNode* tree) const {
         if (tree == nullptr) return;
         Print(tree->left);
-        cout << left << setw(5) << tree->data.id << setw(24) << tree->data.title << setw(20) << tree->data.classification << setw(10) << (tree->data.isBorrowed ? "Borrowed" : "Available") << endl;
+        cout << left 
+             << setw(5) << tree->data.id 
+             << setw(24) << tree->data.title 
+             << setw(20) << tree->data.classification 
+             << setw(10) << (tree->data.isBorrowed ? "Borrowed" : "Available") 
+             << endl;
+
         Print(tree->right);
     }
 
@@ -197,14 +315,47 @@ public:
     }
 
     void Insert(TreeNode*& tree, Book b) {
-        if (tree == nullptr) {
-            tree = new TreeNode(b);
-        }
-        else if (b.id < tree->data.id)
-            Insert(tree->left, b);
-        else
-            Insert(tree->right, b);
+        if (tree == nullptr) tree = new TreeNode(b);
+        else if (b.id < tree->data.id) Insert(tree->left, b);
+        else Insert(tree->right, b);
     }
+
+    void DeleteBook(int id) {
+        root = Delete(root, id);
+    }
+
+    
+    TreeNode* Delete(TreeNode* tree, int id)
+    {
+        if (tree == nullptr) return nullptr;
+
+        if (id < tree->data.id) tree->left = Delete(tree->left, id);
+
+        else if (id > tree->data.id) tree->right = Delete(tree->right, id);
+
+        else {
+            // Case 1: No child
+            if (tree->left == nullptr && tree->right == nullptr) {
+                delete tree;
+                return nullptr;
+            }
+
+            // Case 2: One child
+            else if (tree->left == nullptr) {
+                TreeNode* temp = tree->right;
+                delete tree;
+                return temp;
+            }
+            else if (tree->right == nullptr) {
+                TreeNode* temp = tree->left;
+                delete tree;
+                return temp;
+            }
+        }
+
+        return tree;
+    }
+
 
     void DisplayBookList() const {
         cout << "\n--- Book List ---\n";
@@ -215,160 +366,78 @@ public:
     }
 
     //打印特定书籍的状态历史
-    void DisplayBookStatusHistory(int bookId){
+    void DisplayBookStatusHistory(int bookId, HistoryList& history){
         Book* book = SearchByID(bookId);
         if (book == nullptr) {
             cout << "Book with ID " << bookId << " not found." << endl;
             return;
         }
 
-        cout << "\n--- Status History for Book: " << book->title << " (ID: " << book->id << ") ---" << endl;
+        cout << "\n--- Status History for Book: ---\n" 
+             << "Book: " << book->title << " (ID: " << book->id << ")" << endl;
+        cout << "-----------------------------------------\n"
+             << left << setw(8) << "Action" << setw(10) << "Name" << setw(5) << "ID" << setw(24) << "Title" << endl
+             << "-----------------------------------------\n";
         
-        vector<string> history_list = book->statusStack.getElementsAsVector(); // 获取栈内元素
-        
-        if (history_list.empty()) {
-            cout << "No status history available." << endl;
-        } else {
-            for (size_t i = 0; i < history_list.size(); ++i) {
-                cout << "- " << history_list[i] << endl;
-            }
-        }
-        cout << "Current Status: " << (book->isBorrowed ? "Borrowed" : "Available") << endl;
+        history.displayBookHistory(bookId);
+        cout << "\nCurrent Status: " << (book->isBorrowed ? "Borrowed" : "Available") << endl;
         cout << "Current User: " << (book->isBorrowed ? book->currentUser : "None") << endl;
     }
     
-    //撤销最后一次操作
-    bool UndoLastOperation() {
-        TreeNode* current = root;
-        TreeNode* parent = nullptr;
-        int target_id = -1;
+};
 
-        // 寻找一个有状态历史且可撤销的书籍
-        findLastModifiedBook(root, nullptr, target_id, parent);
+//Undo operation
+void undoLastAction(BookTree& books, ActionStack& action, HistoryList& history)
+{
+    if (action.isEmpty()) {
+        cout << "No operation to undo.\n";
+        return;
+    }
 
-        if(target_id == -1){
-            cout << "No operation to undo." << endl;
-            return false;
-        }
+    Action last = action.pop();
+    Book* b = books.SearchByID(last.book_copy.id);
+    
+    if (last.type == "ADD") {
+        books.DeleteBook(last.book_copy.id);
+        history.removeLastHistory();
+        cout << "Undo ADD Book: "<<last.book_copy.title<<" successful.\n";
 
-        Book* book_to_undo = SearchByID(target_id);
-        if (book_to_undo == nullptr || book_to_undo->statusStack.isEmpty()) {
-            cout << "Error: Cannot undo on book with no status history." << endl;
-            return false;
-        }
+    }
+    else if (last.type == "DELETE") {
+        books.InsertBook(last.book_copy);
+        history.removeLastHistory();
+        cout << "Undo DELETE Book: "<<last.book_copy.title<<" successful.\n";
 
-        string last_status = book_to_undo->statusStack.pop(); // 弹出最后一条记录
-
-        // 解析最后一条状态信息并撤销
-        if (last_status.find("BORROWED") != string::npos) {
-            // 撤销借阅 -> 恢复为可用
-            book_to_undo->isBorrowed = false;
-            book_to_undo->currentUser = "";
-            cout << "Undo successful. Reverted BORROW of book ID " << book_to_undo->id << ". Status is now Available." << endl;
-        }
-        else if (last_status.find("RETURNED") != string::npos) {
-            // 撤销归还 -> 恢复为借出状态
-            // 注意：这需要知道上次是谁借的，我们从状态信息中解析
-            size_t pos = last_status.find(" by ");
-            if(pos != string::npos){
-                string user_name = last_status.substr(pos + 4); // 提取 " by " 后的名字
-                book_to_undo->isBorrowed = true;
-                book_to_undo->currentUser = user_name;
-                cout << "Undo successful. Reverted RETURN of book ID " << book_to_undo->id << ". Status is now Borrowed by " << user_name << "." << endl;
-            } else {
-                 cout << "Error: Could not parse previous borrower from status log. Cannot fully undo." << endl;
-                 // 尽管解析失败，我们仍撤销了状态栈中的记录
-                 return false;
-            }
+    }
+    else if (b != nullptr) {
+        
+        if (last.type == "BORROW") {
+            b->isBorrowed = false;
+            b->currentUser = "";
+            b->rQueue.enqueue(last.book_copy.currentUser); // put back into reservation queue
+            history.removeLastHistory();
+            cout << "Undo BORROW Book: "<<b->title<<" successful.\n";
             
         }
-        else {
-            cout << "Error: Unknown status in history: " << last_status << endl;
-            book_to_undo->statusStack.push(last_status); // 如果无法处理，则将记录放回去
-            return false;
+        else if (last.type == "RETURN") {
+            b->isBorrowed = true;
+            b->currentUser = last.book_copy.currentUser;
+            history.removeLastHistory();
+            cout << "Undo RETURN Book: "<<b->title<<" successful.\n";
+            
         }
-        return true;
-    }
-
-private:
-    // 辅助函数：查找最近修改过的书籍（即状态栈最深或最近有操作的）
-    void findLastModifiedBook(TreeNode* node, TreeNode* p, int& latest_id, TreeNode*& parent_of_latest) const {
-        if(node == nullptr) return;
-
-        findLastModifiedBook(node->left, node, latest_id, parent_of_latest);
-        
-        // 检查当前节点
-        if (!node->data.statusStack.isEmpty() && 
-            (latest_id == -1 || node->data.id > latest_id)) { // 假设ID越大越新，或者可以按时间戳等
-            latest_id = node->data.id;
-            parent_of_latest = p;
+        else if (last.type == "MODIFY"){
+            *b = last.book_copy;
+            history.removeLastHistory();
+            cout << "Undo MODIFY Book: "<<b->title<<" successful.\n";
         }
         
-        findLastModifiedBook(node->right, node, latest_id, parent_of_latest);
     }
-};
-
-
-
-
-
-/*    Linked List for History   */
-struct HistoryNode
-{
-    string action;
-    string userName;
-    int bookID;
-    string bookTitle;
-    HistoryNode* next;
-
-    HistoryNode(string a, string u, int id,string title)
-        : action(a), userName(u), bookID(id), bookTitle(title),next(nullptr) {}
-};
-
-
-
-class HistoryList
-{
-private:
-    HistoryNode* head;
-public:
-    HistoryList() : head(nullptr) {}
-
-    void addHistory(string action, string userName, int bookID, string bookTitle)
-    {
-        HistoryNode* node = new HistoryNode(action, userName, bookID,bookTitle);
-        if (head == nullptr)
-        {
-            head = node;
-            return;
-        }
-        HistoryNode* cur = head;
-        while (cur->next) cur = cur->next;
-        cur->next = node;
+    else{
+        cout << "Book not found.\n";
+        return;
     }
-
-    void disPlay() const
-    {
-        cout << "-------- Borrow History --------\n";
-        cout << "--------------------------------\n"
-             << left << setw(8) << "Action" << setw(10) << "Name" << setw(5) << "ID" << setw(24) << "Title" << endl
-             << "--------------------------------\n";
-        HistoryNode* cur = head;
-        while (cur)
-        {
-             cout <<left
-             << setw(8) << cur->action
-             << setw(10) << cur->userName
-             << setw(5) << cur->bookID
-             << setw(24) << cur->bookTitle
-             << endl;
-            cur = cur->next;
-        }
-        if(head == nullptr) cout << "No history records found." << endl;
-    }
-};
-
-
+}
 
 
 /* =======================
@@ -383,30 +452,40 @@ void TestData(BookTree& books)
     books.InsertBook(Book(401, "Database Systems", "Computer Science"));
 }
 
-void bookHistory(BookTree& books, HistoryList& history)
+void bookHistory(BookTree& books, HistoryList& history, ActionStack& action)
 {
     Book* b1 = books.SearchByID(101);
     b1->isBorrowed = true;
     b1->currentUser = "Adam";
     history.addHistory("BORROW", "Adam", 101, b1->title);
-    b1->statusStack.push("Book ID 101 BORROWED by Adam");
+    Action a;
+    a.type = "BORROW";
+    a.book_copy = *b1;
+    action.push(a);
     
     Book* b2 = books.SearchByID(102);
     b2->isBorrowed = true;
     b2->currentUser = "Lily";
     history.addHistory("BORROW", "Lily", 102, b2->title);
-    b2->statusStack.push("Book ID 102 BORROWED by Lily");
+    Action b;
+    b.type = "BORROW";
+    b.book_copy = *b2;
+    action.push(b);
 
     b1->isBorrowed = false;
     history.addHistory("RETURN", "Adam", 101, b1->title);
-    b1->statusStack.push("Book ID 101 RETURNED by Adam");
     b1->currentUser = "";
+    Action c;
+    c.type = "RETURN";
+    c.book_copy = *b1;
+    action.push(c);
 }
+
 
 /* =======================
    Book Management UI
    ======================= */
-void addBookUI(BookTree& books)
+void addBookUI(BookTree& books, ActionStack& action, HistoryList& history)
 {
     while (true)
     {
@@ -414,17 +493,85 @@ void addBookUI(BookTree& books)
         cout << "\nEnter Book ID (0 to stop): ";
         cin >> id;
         if (id == 0) break;
+
         cin.ignore();
         string title, cls;
         cout << "Title: ";
         getline(cin, title);
+
         cout << "Classification: ";
         getline(cin, cls);
+
         books.InsertBook(Book(id, title, cls));
-        cout << "Book added.\n";
+        Action a;
+        a.type = "ADD";
+        a.book_copy = Book(id, title, cls);
+        action.push(a);
+        history.addHistory("ADD", "-", id, title);
+        cout << "Book '"<<title<<"' is added.\n";
+        
     }
 }
 
+void deleteBookUI(BookTree& books, ActionStack& action, HistoryList& history){
+    while (true)
+    {
+        int id;
+        cout << "\nEnter Book ID (0 to stop): ";
+        cin >> id;
+        if (id == 0) break;
+
+        Book* temp = books.SearchByID(id);
+        if(temp == NULL){
+            cout <<"Book not found.\n";
+            continue;
+        }
+
+        cout << "Book '"<<temp->title<<"' is removed.\n";
+        Action a;
+        a.type = "DELETE";
+        a.book_copy = *temp;
+        action.push(a);
+        history.addHistory("DELETE", "-", id, temp->title);
+        books.DeleteBook(id);
+        
+        
+    }
+}
+
+void modifyBookUI(BookTree& books, ActionStack& action, HistoryList& history){
+    while (true)
+    {
+        int id;
+        cout << "\nEnter Book ID (0 to stop): ";
+        cin >> id;
+        if (id == 0) break;
+
+        Book* temp = books.SearchByID(id);
+        if(temp == NULL){
+            cout <<"Book not found.\n";
+            continue;
+        }
+
+        Action a;
+        a.type = "MODIFY";
+        a.book_copy = *temp;
+        action.push(a);
+
+        cout<<"Enter the new title: ";
+        cin.ignore();
+        getline(cin, temp->title);
+        
+        cout<<"Enter the new classification: ";
+        getline(cin, temp->classification);
+
+        history.addHistory("MODIFY", "-", temp->id, temp->title);
+
+        cout<< "Book modification success!\n"; 
+
+        
+    }
+}
 
 void searchBookUI(BookTree& books)
 {
@@ -454,6 +601,7 @@ void searchBookUI(BookTree& books)
     }
 }
 
+
 /* =======================
    Borrow / Return UI
    ======================= */
@@ -464,7 +612,7 @@ void reserveBookUI(Book* b, string userName){
     
 }
 
-void borrowBookUI(BookTree& books, HistoryList& history)
+void borrowBookUI(BookTree& books, HistoryList& history, ActionStack& action)
 {
     while (true)
     {
@@ -495,6 +643,7 @@ void borrowBookUI(BookTree& books, HistoryList& history)
                 if(choice == 'Y')
                 {
                     reserveBookUI(b, name);
+                    cout << "You are added into the reservation";
                     break; // 用户已选择预约，跳出确认循环
                 }
                 else if (choice != 'Y' && choice != 'N')
@@ -504,17 +653,19 @@ void borrowBookUI(BookTree& books, HistoryList& history)
         }
         else
         {
+            Action a;
+            a.type = "BORROW";
+            a.book_copy = *b;   //copy of book data for undo modification
+            action.push(a);
             b->isBorrowed = true;
             history.addHistory("BORROW", name, id, b->title);
             b->currentUser = name;
-            b->statusStack.push("Book ID " + to_string(b->id) + " BORROWED by " + name);
             cout << "Borrow success.\n";
         }
     }
 }
 
-
-void returnBookUI(BookTree& books, HistoryList& history)
+void returnBookUI(BookTree& books, HistoryList& history, ActionStack& action)
 {
     while (true)
     {
@@ -534,64 +685,84 @@ void returnBookUI(BookTree& books, HistoryList& history)
             cout << "Book was not borrowed.\n";
         }
         else {
-            history.addHistory("RETURN", b->currentUser, id, b->title);
-            b->statusStack.push("Book ID " + to_string(b->id) + " RETURNED by " + b->currentUser);
+            string originalUser = b->currentUser;
+
+            // Push RETURN action first
+            Action returnAction;
+            returnAction.type = "RETURN";
+            returnAction.book_copy = *b;
+            action.push(returnAction);
+
+            history.addHistory("RETURN", originalUser, id, b->title);
 
             if (!b->rQueue.isEmpty()) {
+
                 string nextUser = b->rQueue.dequeue();
+
+                // Push BORROW for next user
+                Action borrowAction;
+                borrowAction.type = "BORROW";
+                borrowAction.book_copy = *b;
+                action.push(borrowAction);
+
                 b->currentUser = nextUser;
                 b->isBorrowed = true;
+
                 history.addHistory("BORROW", nextUser, id, b->title);
-                b->statusStack.push("Book ID " + to_string(b->id) + " BORROWED by " + nextUser);
-                cout << "Book assigned to next reserved user: " 
-                     << nextUser << "." << endl;
+
+                cout << "Book assigned to next reserved user: "
+                    << nextUser << "." << endl;
             }
             else {
                 b->currentUser = "";
                 b->isBorrowed = false;
                 cout << "Return success.\n";
             }
+
         }
     }
 }
 
 //查询特定书籍状态历史的UI
-void queryBookStatusHistoryUI(BookTree& books) {
+void queryBookStatusHistoryUI(BookTree& books, HistoryList& history) {
     int id;
     cout << "\nEnter Book ID to view its status history (0 to cancel): ";
     cin >> id;
     if (id == 0) return;
-    books.DisplayBookStatusHistory(id);
+    books.DisplayBookStatusHistory(id, history);
 }
 
 
 
 /* ========UI=========== 不要动*/  
-void bookMenu(BookTree& books)
+void bookMenu(BookTree& books, ActionStack& action, HistoryList& history)
 {
     int choice;
     while (true)
     {
         cout << "\n--- Book Management ---\n";
         cout << "1. Add Book\n";
-        cout << "2. View All Books\n";
-        cout << "3. Search Book By ID\n";
-        cout << "4. Query Book Status History\n"; 
+        cout << "2. Delete Book\n";
+        cout << "3. Modify Book\n";
+        cout << "4. View All Book\n";
+        cout << "5. Search Book (ID)\n";
         cout << "0. Back\n";
         cout << "Choice: ";
         cin >> choice;
 
         if (choice == 0) break;
 
-        if (choice == 1) addBookUI(books);
-        else if (choice == 2) books.DisplayBookList();
-        else if (choice == 3) searchBookUI(books);
-        else if (choice == 4) queryBookStatusHistoryUI(books); 
+        if (choice == 1) addBookUI(books, action, history);
+        else if (choice == 2) deleteBookUI(books, action, history);
+        else if (choice == 3) modifyBookUI(books, action, history);
+        else if (choice == 4) books.DisplayBookList();
+        else if (choice == 5) searchBookUI(books);
+
         else cout << "Invalid choice\n";
     }
 }
 
-void borrowMenu(BookTree& books, HistoryList& history)
+void borrowMenu(BookTree& books, HistoryList& history, ActionStack& action)
 {
     int choice;
     while (true)
@@ -599,16 +770,16 @@ void borrowMenu(BookTree& books, HistoryList& history)
         cout << "\n--- Borrow / Return ---\n";
         cout << "1. Borrow Book\n";
         cout << "2. Return Book\n";
-        cout << "3. Undo Last Operation\n"; 
+        cout << "3. View Book Status History\n";
         cout << "0. Back\n";
         cout << "Choice: ";
         cin >> choice;
 
         if (choice == 0) break;
 
-        if (choice == 1) borrowBookUI(books, history);
-        else if (choice == 2) returnBookUI(books, history);
-        else if (choice == 3) books.UndoLastOperation(); 
+        if (choice == 1) borrowBookUI(books, history, action);
+        else if (choice == 2) returnBookUI(books, history, action);
+        else if (choice == 3) queryBookStatusHistoryUI(books, history); 
         else cout << "Invalid choice\n";
     }
 }
@@ -620,8 +791,9 @@ int main()
 {
     BookTree books;
     HistoryList history;
+    ActionStack action;
     TestData(books);
-    bookHistory(books, history);
+    bookHistory(books, history, action);
 
     int choice;
     while (true)
@@ -630,13 +802,15 @@ int main()
         cout << "1. Book Management\n";
         cout << "2. Borrow / Return\n";
         cout << "3. View History\n";
+        cout << "4. Undo Last Operation\n";
         cout << "0. Exit\n";
         cout << "Choice: ";
         cin >> choice;
         if (choice == 0) break;
-        if (choice == 1) bookMenu(books);
-        else if (choice == 2) borrowMenu(books, history);
-        else if (choice == 3) history.disPlay();
+        if (choice == 1) bookMenu(books, action, history);
+        else if (choice == 2) borrowMenu(books, history, action);
+        else if (choice == 3) history.displayHistory();
+        else if (choice == 4) undoLastAction(books, action, history);
         else cout << "Invalid choice\n";
     }
 
