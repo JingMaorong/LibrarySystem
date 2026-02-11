@@ -25,15 +25,15 @@ class ReservationQueue
 
     public:
         ReservationQueue() : front(nullptr), rear(nullptr) {}
-        ~ReservationQueue() {
-            ReservationNode* cur = front;
-            while(cur != NULL){
-                ReservationNode* temp = cur;
-                cur = cur->next;
-                delete temp;
-            }
-            front = rear = NULL;
-        }
+        // ~ReservationQueue() {
+        //     ReservationNode* cur = front;
+        //     while(cur != NULL){
+        //         ReservationNode* temp = cur;
+        //         cur = cur->next;
+        //         delete temp;
+        //     }
+        //     front = rear = NULL;
+        // }
 
         bool isEmpty(){    //if queue is empty, no next user assigned
             return front == NULL;
@@ -62,6 +62,14 @@ class ReservationQueue
 
 };
 
+int getCategoryPrefix(const string& category)
+{
+    if (category == "Romance") return 1;
+    if (category == "Fiction") return 2;
+    if (category == "Mathematics") return 3;
+    if (category == "Computer Science") return 4;
+    return 9; // Other / unknown
+}
 
 /* Book Structure */
 struct Book
@@ -120,7 +128,7 @@ public:
 
     Action pop() {
         if (isEmpty()) {
-            return Action(); // 或者抛出异常
+            return Action(); 
         }
         StackNode* oldTop = top_node;
         Action value = oldTop->data;
@@ -140,9 +148,6 @@ public:
     }
 };
 
-
-
-
 /* ==========================
    Linked List Implementatian
    ========================== */
@@ -154,10 +159,12 @@ struct HistoryNode
     string userName;
     int bookID;
     string bookTitle;
+    string category;
     HistoryNode* next;
 
-    HistoryNode(string a, string u, int id,string title)
-        : action(a), userName(u), bookID(id), bookTitle(title),next(nullptr) {}
+    HistoryNode(string a, string u, int id, string title, string cat)
+        : action(a), userName(u), bookID(id),
+          bookTitle(title), category(cat), next(nullptr) {}
 };
 
 //History Linked List
@@ -168,9 +175,9 @@ private:
 public:
     HistoryList() : head(nullptr) {}
 
-    void addHistory(string action, string userName, int bookID, string bookTitle)
+    void addHistory(string action, string userName, int bookID, string bookTitle, string category)
     {
-        HistoryNode* node = new HistoryNode(action, userName, bookID,bookTitle);
+        HistoryNode* node = new HistoryNode(action, userName, bookID, bookTitle, category);
         if (head == nullptr)
         {
             head = node;
@@ -183,10 +190,10 @@ public:
 
     void displayHistory() const
     {
-        cout << "------------ Borrow History ------------\n";
-        cout << "----------------------------------------\n"
-             << left << setw(8) << "Action" << setw(10) << "Name" << setw(5) << "ID" << setw(24) << "Title" << endl
-             << "----------------------------------------\n";
+        cout << "------------------------ Action History ------------------------\n";
+        cout << "----------------------------------------------------------------\n"
+             << left << setw(8) << "Action" << setw(10) << "Name" << setw(5) << "ID" << setw(24) << "Title" << setw(20) << "Category" << endl
+             << "----------------------------------------------------------------\n";
         HistoryNode* cur = head;
         while (cur)
         {
@@ -195,6 +202,7 @@ public:
              << setw(10) << cur->userName
              << setw(5) << cur->bookID
              << setw(24) << cur->bookTitle
+             << setw(20) << cur->category
              << endl;
             cur = cur->next;
         }
@@ -214,6 +222,7 @@ public:
                     << setw(10) << cur->userName
                     << setw(5) << cur->bookID
                     << setw(24) << cur->bookTitle
+                    << setw(20) << cur->category
                     << endl;
                 found = true;
             }
@@ -241,8 +250,6 @@ public:
         cur->next = NULL;
     }
 };
-
-
 
 /* ====================
    Tree Implementation
@@ -293,11 +300,62 @@ private:
 
         Print(tree->right);
     }
+    
+    string getCategoryByID(int id) const
+	{
+    	int prefix = id / 100;   
+
+    	switch (prefix)
+    	{
+        	case 1: return "Romance";
+        	case 2: return "Fiction";
+        	case 3: return "Mathematics";
+        	case 4: return "Computer Science";
+        	default: return "Others";
+    	}
+	}
+
+	void DisplayGrouped(TreeNode* tree, string& currentCategory) const
+{
+    if (tree == nullptr) return;
+
+    DisplayGrouped(tree->left, currentCategory);
+
+    string bookCategory = getCategoryByID(tree->data.id);
+
+    if (bookCategory != currentCategory)
+    {
+        currentCategory = bookCategory;
+	
+		cout << "\n=== Category: " << currentCategory << " ===\n";
+
+        cout << left
+             << setw(5)  << "ID"
+             << setw(24) << "Title"
+             << setw(20) << "Class"
+             << setw(10) << "Status"
+             << endl;
+        
+        cout << string(59, '-') << endl; 
+    }
+
+    // Print book row
+    cout << left
+         << setw(5)  << tree->data.id
+         << setw(24) << tree->data.title
+         << setw(20) << tree->data.classification
+         << setw(10) << (tree->data.isBorrowed ? "Borrowed" : "Available")
+         << endl;
+
+    DisplayGrouped(tree->right, currentCategory);
+}
 
 public:
     BookTree() { root = nullptr; }
 
     ~BookTree() { Destroy(root); }
+
+	TreeNode* getRoot() const { return root; }
 
     bool isEmpty() const {
         if (root == nullptr) return true;
@@ -319,11 +377,17 @@ public:
         else if (b.id < tree->data.id) Insert(tree->left, b);
         else Insert(tree->right, b);
     }
+    
+    void CollectBooks(TreeNode* tree, vector<Book*>& list) const {
+    	if (!tree) return;
+    	CollectBooks(tree->left, list);
+    	list.push_back(&tree->data);
+    	CollectBooks(tree->right, list);
+	}
 
     void DeleteBook(int id) {
         root = Delete(root, id);
-    }
-
+	}
     
     TreeNode* Delete(TreeNode* tree, int id)
     {
@@ -357,33 +421,50 @@ public:
     }
 
 
-    void DisplayBookList() const {
-        cout << "\n--- Book List ---\n";
-        cout << "-----------------------------------------------------------------\n"
-             << left << setw(5) << "ID" << setw(24) << "Title" << setw(20) << "Class" << setw(10) << "Status" << endl
-             << "-----------------------------------------------------------------\n";
-        Print(root);
-    }
+    void DisplayBookList() const
+	{
+    	if (root == nullptr)
+    	{
+        	cout << "No books available.\n";
+        	return;
+    	}
 
-    //打印特定书籍的状态历史
-    void DisplayBookStatusHistory(int bookId, HistoryList& history){
-        Book* book = SearchByID(bookId);
-        if (book == nullptr) {
-            cout << "Book with ID " << bookId << " not found." << endl;
-            return;
-        }
+    	string currentCategory = "";
 
-        cout << "\n--- Status History for Book: ---\n" 
-             << "Book: " << book->title << " (ID: " << book->id << ")" << endl;
-        cout << "-----------------------------------------\n"
-             << left << setw(8) << "Action" << setw(10) << "Name" << setw(5) << "ID" << setw(24) << "Title" << endl
-             << "-----------------------------------------\n";
-        
-        history.displayBookHistory(bookId);
-        cout << "\nCurrent Status: " << (book->isBorrowed ? "Borrowed" : "Available") << endl;
-        cout << "Current User: " << (book->isBorrowed ? book->currentUser : "None") << endl;
-    }
-    
+    	DisplayGrouped(root, currentCategory);
+	}
+
+    void DisplayBookStatusHistory(int bookId, HistoryList& history)
+	{
+    	Book* book = SearchByID(bookId);
+    	if (book == nullptr)
+    	{
+        	cout << "Book with ID " << bookId << " not found." << endl;
+        	return;
+    	}
+
+    	string category = getCategoryByID(book->id);
+
+    	cout << "\n----------------- Status History for Book -----------------\n";
+    	cout << "Book     : " << book->title << " (ID: " << book->id << ")\n";
+    	cout << "-----------------------------------------------------------\n"
+        	 << left
+        	 << setw(8)  << "Action"
+        	 << setw(10) << "Name"
+        	 << setw(5)  << "ID"
+        	 << setw(24) << "Title"
+        	 << setw(20) << "Category"
+        	 << endl
+        	 << "-----------------------------------------------------------\n";
+
+    	history.displayBookHistory(bookId);
+
+    	cout << "\nCurrent Status : "
+        	 << (book->isBorrowed ? "Borrowed" : "Available") << endl;
+
+    	cout << "Current User   : "
+        	 << (book->isBorrowed ? book->currentUser : "None") << endl;
+	}
 };
 
 //Undo operation
@@ -439,17 +520,17 @@ void undoLastAction(BookTree& books, ActionStack& action, HistoryList& history)
     }
 }
 
-
 /* =======================
    Test Data
    ======================= */
 void TestData(BookTree& books)
 {
-    books.InsertBook(Book(101, "Data Structures", "Computer Science"));
-    books.InsertBook(Book(102, "Operating Systems", "Computer Science"));
-    books.InsertBook(Book(201, "Discrete Mathematics", "Mathematics"));
-    books.InsertBook(Book(301, "Linear Algebra", "Mathematics"));
-    books.InsertBook(Book(401, "Database Systems", "Computer Science"));
+    books.InsertBook(Book(401, "Data Structures", "Computer Science"));
+    books.InsertBook(Book(402, "Operating Systems", "Computer Science"));
+    books.InsertBook(Book(301, "Discrete Mathematics", "Mathematics"));
+    books.InsertBook(Book(302, "Linear Algebra", "Mathematics"));
+    books.InsertBook(Book(101, "Love in Paris", "Romance"));
+    books.InsertBook(Book(403, "Database Systems", "Computer Science"));
 }
 
 void bookHistory(BookTree& books, HistoryList& history, ActionStack& action)
@@ -457,23 +538,23 @@ void bookHistory(BookTree& books, HistoryList& history, ActionStack& action)
     Book* b1 = books.SearchByID(101);
     b1->isBorrowed = true;
     b1->currentUser = "Adam";
-    history.addHistory("BORROW", "Adam", 101, b1->title);
+    history.addHistory("BORROW", "Adam", 101, b1->title, b1->classification);
     Action a;
     a.type = "BORROW";
     a.book_copy = *b1;
     action.push(a);
     
-    Book* b2 = books.SearchByID(102);
+    Book* b2 = books.SearchByID(401);
     b2->isBorrowed = true;
     b2->currentUser = "Lily";
-    history.addHistory("BORROW", "Lily", 102, b2->title);
+    history.addHistory("BORROW", "Lily", 401, b2->title, b2->classification);
     Action b;
     b.type = "BORROW";
     b.book_copy = *b2;
     action.push(b);
 
     b1->isBorrowed = false;
-    history.addHistory("RETURN", "Adam", 101, b1->title);
+    history.addHistory("RETURN", "Adam", 101, b1->title, b1->classification);
     b1->currentUser = "";
     Action c;
     c.type = "RETURN";
@@ -481,39 +562,72 @@ void bookHistory(BookTree& books, HistoryList& history, ActionStack& action)
     action.push(c);
 }
 
-
 /* =======================
    Book Management UI
    ======================= */
+
+void initializeCounters(BookTree& books, int counter[])
+{
+    	vector<Book*> list;
+    	books.CollectBooks(books.getRoot(), list);  // see note below
+
+    	for (Book* b : list)
+    	{
+        	int prefix = b->id / 100;
+        	int number = b->id % 100;
+        	if (number > counter[prefix])
+            	counter[prefix] = number;
+    	}
+}
+
 void addBookUI(BookTree& books, ActionStack& action, HistoryList& history)
 {
+    static int counter[10] = {0};
+    static bool initialized = false;
+
+    if (!initialized) {
+        initializeCounters(books, counter);
+        initialized = true;
+    }
+
     while (true)
     {
-        int id;
-        cout << "\nEnter Book ID (0 to stop): ";
-        cin >> id;
-        if (id == 0) break;
-
         cin.ignore();
-        string title, cls;
-        cout << "Title: ";
-        getline(cin, title);
+        string title, cls, userName;
 
+        cout << "\nEnter Book Title (0 to stop): ";
+        getline(cin, title);
+        if (title == "0") break;
+		
+		cout << "Enter your name: ";
+		getline(cin, userName);
+		
         cout << "Classification: ";
         getline(cin, cls);
 
+        int prefix = getCategoryPrefix(cls);
+        counter[prefix]++;
+        int id = prefix * 100 + counter[prefix];
+
         books.InsertBook(Book(id, title, cls));
+
         Action a;
         a.type = "ADD";
         a.book_copy = Book(id, title, cls);
         action.push(a);
-        history.addHistory("ADD", "-", id, title);
-        cout << "Book '"<<title<<"' is added.\n";
-        
+
+        history.addHistory("ADD", userName, id, title, cls);
+
+        cout << "Book added with ID: " << id << endl;
     }
 }
 
 void deleteBookUI(BookTree& books, ActionStack& action, HistoryList& history){
+	string adminName;
+	cout << "Enter you name: ";
+	cin.ignore();
+	getline(cin, adminName);
+	
     while (true)
     {
         int id;
@@ -532,7 +646,7 @@ void deleteBookUI(BookTree& books, ActionStack& action, HistoryList& history){
         a.type = "DELETE";
         a.book_copy = *temp;
         action.push(a);
-        history.addHistory("DELETE", "-", id, temp->title);
+        history.addHistory("DELETE", adminName, id, temp->title, temp->classification);
         books.DeleteBook(id);
         
         
@@ -565,7 +679,7 @@ void modifyBookUI(BookTree& books, ActionStack& action, HistoryList& history){
         cout<<"Enter the new classification: ";
         getline(cin, temp->classification);
 
-        history.addHistory("MODIFY", "-", temp->id, temp->title);
+        history.addHistory("MODIFY", "-", temp->id, temp->title, temp->classification);
 
         cout<< "Book modification success!\n"; 
 
@@ -589,7 +703,7 @@ void searchBookUI(BookTree& books)
             cout << "\nBook found\n";
             cout << "-------------------------------------------------------------\n"
                 << left<<setw(5)<<"ID"<<setw(24)<<"Title"<<setw(20)<<"Class"<<setw(10)<<"Status"<<endl
-                << "-------------------------------------------------------------\n";
+                << "--------------------------------------------------------------\n";
             cout <<left
                  << setw(5) << b->id
                  << setw(24) << b->title
@@ -644,7 +758,7 @@ void borrowBookUI(BookTree& books, HistoryList& history, ActionStack& action)
                 {
                     reserveBookUI(b, name);
                     cout << "You are added into the reservation";
-                    break; // 用户已选择预约，跳出确认循环
+                    break; 
                 }
                 else if (choice != 'Y' && choice != 'N')
                     cout << "Invalid input. Please enter your choice again (Y/N): ";
@@ -658,7 +772,7 @@ void borrowBookUI(BookTree& books, HistoryList& history, ActionStack& action)
             a.book_copy = *b;   //copy of book data for undo modification
             action.push(a);
             b->isBorrowed = true;
-            history.addHistory("BORROW", name, id, b->title);
+            history.addHistory("BORROW", name, id, b->title, b->classification);
             b->currentUser = name;
             cout << "Borrow success.\n";
         }
@@ -693,7 +807,7 @@ void returnBookUI(BookTree& books, HistoryList& history, ActionStack& action)
             returnAction.book_copy = *b;
             action.push(returnAction);
 
-            history.addHistory("RETURN", originalUser, id, b->title);
+            history.addHistory("RETURN", originalUser, id, b->title, b->classification);
 
             if (!b->rQueue.isEmpty()) {
 
@@ -708,7 +822,7 @@ void returnBookUI(BookTree& books, HistoryList& history, ActionStack& action)
                 b->currentUser = nextUser;
                 b->isBorrowed = true;
 
-                history.addHistory("BORROW", nextUser, id, b->title);
+                history.addHistory("BORROW", nextUser, id, b->title, b->classification);
 
                 cout << "Book assigned to next reserved user: "
                     << nextUser << "." << endl;
@@ -723,7 +837,6 @@ void returnBookUI(BookTree& books, HistoryList& history, ActionStack& action)
     }
 }
 
-//查询特定书籍状态历史的UI
 void queryBookStatusHistoryUI(BookTree& books, HistoryList& history) {
     int id;
     cout << "\nEnter Book ID to view its status history (0 to cancel): ";
@@ -732,9 +845,7 @@ void queryBookStatusHistoryUI(BookTree& books, HistoryList& history) {
     books.DisplayBookStatusHistory(id, history);
 }
 
-
-
-/* ========UI=========== 不要动*/  
+/* ========UI=========== */  
 void bookMenu(BookTree& books, ActionStack& action, HistoryList& history)
 {
     int choice;
@@ -783,9 +894,6 @@ void borrowMenu(BookTree& books, HistoryList& history, ActionStack& action)
         else cout << "Invalid choice\n";
     }
 }
-
-
-
 
 int main()
 {
